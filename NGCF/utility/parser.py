@@ -18,6 +18,8 @@ def parse_args():
 
     parser.add_argument('--dataset', nargs='?', default='gowalla',
                         help='Choose a dataset from {gowalla, yelp2018, amazon-book}')
+    parser.add_argument('--fold', nargs='?', default='1',
+                        help='Choose a fold 1-5')
     parser.add_argument('--pretrain', type=int, default=0,
                         help='0: No pretrain, -1: Pretrain with the learned embeddings, 1:Pretrain with stored models.')
     parser.add_argument('--verbose', type=int, default=1,

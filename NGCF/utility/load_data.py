@@ -11,12 +11,13 @@ import scipy.sparse as sp
 from time import time
 
 class Data(object):
-    def __init__(self, path, batch_size):
+    def __init__(self, path, fold, batch_size):
         self.path = path
         self.batch_size = batch_size
+        self.fold = fold
 
-        train_file = path + '/train.txt'
-        test_file = path + '/test.txt'
+        train_file = path + '/train' + fold + '.txt'
+        test_file = path + '/test' + fold + '.txt'
 
         #get number of users and items
         self.n_users, self.n_items = 0, 0
