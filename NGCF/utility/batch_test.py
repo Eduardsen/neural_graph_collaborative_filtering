@@ -21,20 +21,6 @@ USR_NUM, ITEM_NUM = data_generator.n_users, data_generator.n_items
 N_TRAIN, N_TEST = data_generator.n_train, data_generator.n_test
 BATCH_SIZE = args.batch_size
 
-def get_ap(item_score, user_pos_test):
-    item_score = sorted(item_score.items(), key=lambda kv: kv[1])
-    item_score.reverse()
-    item_sort = [x[0] for x in item_score]
-    posterior = [x[1] for x in item_score]
-
-    r = []
-    for i in item_sort:
-        if i in user_pos_test:
-            r.append(1)
-        else:
-            r.append(0)
-    return metrics.average_precision2(r, posterior)
-
 def ranklist_by_heapq(user_pos_test, test_items, rating, Ks):
     item_score = {}
     
@@ -51,8 +37,7 @@ def ranklist_by_heapq(user_pos_test, test_items, rating, Ks):
         else:
             r.append(0)
     auc = 0.
-    ap = get_ap(item_score, user_pos_test)
-    return r, auc, ap
+    return r, auc
 
 def get_auc(item_score, user_pos_test):
     item_score = sorted(item_score.items(), key=lambda kv: kv[1])
@@ -86,11 +71,10 @@ def ranklist_by_sorted(user_pos_test, test_items, rating, Ks):
         else:
             r.append(0)
     auc = get_auc(item_score, user_pos_test)
-    ap = get_ap(item_score, user_pos_test)
     
-    return r, auc, ap
+    return r, auc
 
-def get_performance(user_pos_test, r, auc, Ks, ap):
+def get_performance(user_pos_test, r, auc, Ks):
     precision, recall, ndcg, hit_ratio = [], [], [], []
 
     for K in Ks:
@@ -98,6 +82,8 @@ def get_performance(user_pos_test, r, auc, Ks, ap):
         recall.append(metrics.recall_at_k(r, K, len(user_pos_test)))
         ndcg.append(metrics.ndcg_at_k(r, K))
         hit_ratio.append(metrics.hit_at_k(r, K))
+
+    ap = metrics.average_precision(r, 10)
 
     return {'recall': np.array(recall), 'precision': np.array(precision),
             'ndcg': np.array(ndcg), 'hit_ratio': np.array(hit_ratio), 'auc': auc, 'ap': ap}
@@ -121,36 +107,14 @@ def test_one_user(x):
     test_items = list(all_items - set(training_items))
 
     if args.test_flag == 'part':
-        r, auc, ap = ranklist_by_heapq(user_pos_test, test_items, rating, Ks)
+        r, auc = ranklist_by_heapq(user_pos_test, test_items, rating, Ks)
     else:
-        r, auc, ap = ranklist_by_sorted(user_pos_test, test_items, rating, Ks)
+        r, auc = ranklist_by_sorted(user_pos_test, test_items, rating, Ks)
 
-    return get_performance(user_pos_test, r, auc, Ks, ap)
-
-def test_all_user(ratings, users):
-    for index, row in enumerate(ratings):
-        row.sort()
-        reversedlist = row[::-1]
-        topK = reversedlist[:10]
-        user = users[index]
-       
-        try:
-            training_items = data_generator.train_items[user]
-        except Exception:
-            training_items = []
-        #user u's items in the test set
-            user_pos_test = data_generator.test_set[user]
-
-        all_items = set(range(ITEM_NUM))
-
-        test_items = list(all_items - set(training_items))
-    
-    print("hurr")
-    print("bingo")
+    return get_performance(user_pos_test, r, auc, Ks)
 
 
 def test(sess, model, users_to_test, drop_flag=False, batch_test_flag=False):
-    global aps
     result = {'precision': np.zeros(len(Ks)), 'recall': np.zeros(len(Ks)), 'ndcg': np.zeros(len(Ks)),
               'hit_ratio': np.zeros(len(Ks)), 'auc': 0.}
 
@@ -211,18 +175,16 @@ def test(sess, model, users_to_test, drop_flag=False, batch_test_flag=False):
 
         user_batch_rating_uid = zip(rate_batch, user_batch)
         batch_result = pool.map(test_one_user, user_batch_rating_uid)
-        test_all_user(rate_batch, user_batch)
         
         count += len(batch_result)
         
-        for re in batch_result:
-            aps.append(re['ap'])
         for re in batch_result:
             result['precision'] += re['precision']/n_test_users
             result['recall'] += re['recall']/n_test_users
             result['ndcg'] += re['ndcg']/n_test_users
             result['hit_ratio'] += re['hit_ratio']/n_test_users
             result['auc'] += re['auc']/n_test_users
+            aps.append(re['ap'])
 
         mapk = metrics.mapk(aps, n_test_users)
         print(mapk)
