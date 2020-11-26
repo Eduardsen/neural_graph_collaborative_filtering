@@ -6,9 +6,11 @@ Wang Xiang et al. Neural Graph Collaborative Filtering. In SIGIR 2019.
 @author: Xiang Wang (xiangwang@u.nus.edu)
 '''
 import tensorflow as tf
+print(tf.__version__)
 import os
 import sys
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
+import utility.metrics as metrics
 
 from utility.helper import *
 from utility.batch_test import *
